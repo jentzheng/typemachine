@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 921.0, 100.0, 690.0, 983.0 ],
+		"rect" : [ 446.0, 100.0, 1165.0, 983.0 ],
 		"gridonopen" : 2,
 		"gridsize" : [ 8.0, 8.0 ],
 		"gridsnaponopen" : 2,
@@ -70,7 +70,7 @@
 					"numoutlets" : 4,
 					"outlettype" : [ "list", "", "", "" ],
 					"patching_rect" : [ 8.0, 688.0, 488.0, 304.0 ],
-					"rows" : 23
+					"rows" : 15
 				}
 
 			}
@@ -119,18 +119,6 @@
 					"outlettype" : [ "jit_matrix", "" ],
 					"patching_rect" : [ 8.0, 80.0, 352.0, 200.0 ],
 					"sync" : 0
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-5",
-					"maxclass" : "toggle",
-					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "int" ],
-					"parameter_enable" : 0,
-					"patching_rect" : [ 8.0, 8.0, 24.0, 24.0 ]
 				}
 
 			}
@@ -189,6 +177,19 @@
 					"outlettype" : [ "" ],
 					"parameter_enable" : 0,
 					"patching_rect" : [ 40.0, 608.0, 150.0, 22.0 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"attr" : "enable",
+					"id" : "obj-4",
+					"maxclass" : "attrui",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"parameter_enable" : 0,
+					"patching_rect" : [ 8.0, 16.0, 150.0, 22.0 ]
 				}
 
 			}
@@ -256,7 +257,7 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-3", 0 ],
-					"source" : [ "obj-5", 0 ]
+					"source" : [ "obj-4", 0 ]
 				}
 
 			}

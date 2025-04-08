@@ -10,7 +10,7 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 80.0, 100.0, 773.0, 983.0 ],
+		"rect" : [ 80.0, 100.0, 1182.0, 983.0 ],
 		"openinpresentation" : 1,
 		"gridonopen" : 2,
 		"gridsize" : [ 8.0, 8.0 ],
@@ -648,7 +648,7 @@
 
 			}
  ],
-		"originid" : "pat-10"
+		"originid" : "pat-97"
 	}
 
 }

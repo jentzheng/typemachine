@@ -181,6 +181,8 @@ function clear() {
 }
 
 function bang() {
+  historyMat.frommatrix(displayMat);
+
   if (isPlaying) {
     // output by each line
     if (options.outputMode === "byLine") {
@@ -198,7 +200,6 @@ function bang() {
         textLineTemp.copyarraytomatrix(listValues);
       }
 
-      historyMat.frommatrix(displayMat);
       jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
       jit_rota.matrixcalc(tempMat, historyMat);
 
@@ -210,7 +211,6 @@ function bang() {
     if (options.outputMode === "byCharacter") {
       const listValues = iterMatrix(textFileMatrix, currentLine);
       const currentCell = listValues[lineCursor];
-      historyMat.frommatrix(displayMat);
 
       if (listValues.length > 1) {
         textLineTemp.copyarraytomatrix(listValues);

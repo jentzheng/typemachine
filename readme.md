@@ -32,11 +32,9 @@ For a guided walkthrough of the patch, open `typemachine-v8.maxhelp` in Max MSP.
 - Max MSP 9.0 or later.
 - Compatible with macOS and Windows.
 
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
 ## Acknowledgments
+
+Note: This patch was inspired by the amazing work in [`th.gl.commandline`](https://github.com/tmhglnd/th.gl.commandline/). Big thanks to tmhglnd for the inspiration!
 
 Special thanks to the Max MSP community for their support and resources.
 
