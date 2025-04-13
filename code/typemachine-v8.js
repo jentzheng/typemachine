@@ -7,28 +7,57 @@ const options = {
   isLoop: true,
   outputMode: "byCharacter",
   dim: [127, 15],
+  consolePrefix: ">>> ",
+  consoleCursor: "_",
+  consoleCursorAlt: " ",
 };
+
+declareattribute("console_prefix", {
+  type: "symbol",
+  default: options.consolePrefix,
+  getter: "getConsolePrefix",
+  setter: "setConsolePrefix",
+});
+function getConsolePrefix() {
+  return options.consolePrefix;
+}
+function setConsolePrefix(val) {
+  options.consolePrefix = val;
+}
+
+declareattribute("console_cursor", {
+  type: "symbol",
+  default: options.consoleCursor,
+  getter: "getConsoleCursor",
+  setter: "setConsoleCursor",
+});
+function getConsoleCursor() {
+  return options.consoleCursor;
+}
+function setConsoleCursor(val) {
+  options.consoleCursor = val;
+}
 
 declareattribute("dim", {
   type: "long",
-  min: 5,
-  max: 172,
-  default: [172, 15],
+  min: 2,
+  max: 127,
+  default: options.dim,
   getter: "getDim",
   setter: "setDim",
 });
-
 function getDim() {
   return options.dim;
 }
-
 function setDim(x, y) {
   options.dim = [x, y];
-  historyMat.dim = [x, y];
+  historyMat.dim = [x, y - 1];
+  displayMat.dim = [x, y];
 }
 
 declareattribute("loop", {
   style: "onoff",
+  default: options.isLoop,
   getter: "getLoop",
   setter: "setLoop",
 });
@@ -43,6 +72,7 @@ function setLoop(val) {
 
 declareattribute("output_mode", {
   style: "enum",
+  default: options.outputMode,
   enumvals: ["byLine", "byCharacter"],
   getter: "getOutputMode",
   setter: "setOutputMode",
@@ -57,11 +87,6 @@ function setOutputMode(val) {
   textLineTemp.clear();
   historyMat.clear();
 }
-
-let currentLine = 0;
-let lineCursor = 0;
-let isPlaying = true;
-let cycleCount = 0;
 
 function iterMatrix(matrix, row) {
   const columns = [...Array(matrix.dim[0]).keys()];
@@ -103,9 +128,8 @@ function notifydeleted() {
 
 // handle the input text from [textedit]
 const consoleData = {
-  prefix: ">>> ",
   text: "",
-  suffix: "_",
+  cursor: options.consoleCursor,
 };
 
 function text(text) {
@@ -114,22 +138,25 @@ function text(text) {
     task.repeat();
     task.interval = 250;
   } else {
-    consoleData.text = "";
-    consoleMat.clear();
     task.cancel();
+    consoleMat.clear();
+    consoleData.text = "";
+    historyMat.frommatrix(displayMat);
+    jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
+    outlet(0, "jit_matrix", displayMat.name);
   }
 }
 
 const task = new Task(function () {
   // toggle the suffix
-  if (consoleData.suffix === "_") {
-    consoleData.suffix = " ";
+  if (consoleData.cursor === options.consoleCursor) {
+    consoleData.cursor = options.consoleCursorAlt;
   } else {
-    consoleData.suffix = "_";
+    consoleData.cursor = options.consoleCursor;
   }
 
   const chars = encodeText(
-    consoleData.prefix + consoleData.text + consoleData.suffix
+    options.consolePrefix + consoleData.text + consoleData.cursor
   );
   consoleMat.dim = [chars.length, 1];
   consoleMat.copyarraytomatrix(new Uint8Array(chars));
@@ -139,9 +166,11 @@ const task = new Task(function () {
 });
 
 function textReturn() {
+  historyMat.frommatrix(displayMat);
   task.cancel();
+  const regex = /^\/(\S+)\s*(.*)$/;
 
-  const chars = encodeText(consoleData.prefix + consoleData.text);
+  const chars = encodeText(options.consolePrefix + consoleData.text);
   consoleMat.dim = [chars.length, 1];
   consoleMat.copyarraytomatrix(new Uint8Array(chars));
 
@@ -154,30 +183,39 @@ function textReturn() {
   }
 
   outlet(0, "jit_matrix", displayMat.name);
+
+  const match = consoleData.text.trim().match(regex);
+  if (match) {
+    const command = match[1];
+    const message = match[2];
+
+    outlet_dictionary(1, { command, message });
+  }
 }
 
-// income textfile
+// text matrix input
+let currentLine = 0;
+let lineCursor = 0;
+let isPlaying = true;
+let cycleCount = 0;
+
 function jit_matrix(name) {
   currentLine = 0;
   lineCursor = 0;
-  historyMat.clear();
   textFileMatrix.name = name;
   textLineTemp.dim = [textFileMatrix.dim[0], 1];
-}
 
-function play() {
-  isPlaying = true;
-  bang();
-}
+  // show the first line
+  clear();
 
-function pause() {
-  isPlaying = false;
-}
-
-function clear() {
-  historyMat.clear();
-  displayMat.clear();
-  bang();
+  const listValues = iterMatrix(textFileMatrix, currentLine);
+  if (listValues.length > 1) {
+    textLineTemp.copyarraytomatrix(listValues);
+  }
+  jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
+  jit_rota.matrixcalc(tempMat, historyMat);
+  // clear the last row
+  outlet(0, "jit_matrix", historyMat.name);
 }
 
 function bang() {
@@ -247,6 +285,22 @@ function bang() {
       }
     }
   }
+}
+
+function play() {
+  isPlaying = true;
+  bang();
+}
+
+function pause() {
+  isPlaying = false;
+}
+
+function clear() {
+  historyMat.clear();
+  textLineTemp.clear();
+  tempMat.clear();
+  displayMat.clear();
 }
 
 // This function encodes a string into UTF-8 octets, similar to the [jit.str.fromsymbol]
