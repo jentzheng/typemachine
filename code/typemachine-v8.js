@@ -5,8 +5,8 @@ outlets = 2;
 
 const options = {
   isLoop: true,
-  outputMode: "byCharacter",
-  dim: [127, 15],
+  outputMode: "byLine",
+  dim: [256, 15],
   consolePrefix: ">>> ",
   consoleCursor: "_",
   consoleCursorAlt: " ",
@@ -18,9 +18,11 @@ declareattribute("console_prefix", {
   getter: "getConsolePrefix",
   setter: "setConsolePrefix",
 });
+
 function getConsolePrefix() {
   return options.consolePrefix;
 }
+
 function setConsolePrefix(val) {
   options.consolePrefix = val;
 }
@@ -41,7 +43,7 @@ function setConsoleCursor(val) {
 declareattribute("dim", {
   type: "long",
   min: 2,
-  max: 127,
+  max: 256,
   default: options.dim,
   getter: "getDim",
   setter: "setDim",
@@ -86,18 +88,6 @@ function setOutputMode(val) {
   options.outputMode = val;
   textLineTemp.clear();
   historyMat.clear();
-}
-
-function iterMatrix(matrix, row) {
-  const columns = [...Array(matrix.dim[0]).keys()];
-  const listValues = new Uint8Array(
-    columns.map((col) => {
-      const cell = matrix.getcell([col, row]);
-      return cell;
-    })
-  );
-
-  return listValues;
 }
 
 const textFileMatrix = new JitterMatrix(1, "char");
@@ -196,8 +186,6 @@ function textReturn() {
 // text matrix input
 let currentLine = 0;
 let lineCursor = 0;
-let isPlaying = true;
-let cycleCount = 0;
 
 function jit_matrix(name) {
   currentLine = 0;
@@ -207,93 +195,95 @@ function jit_matrix(name) {
 
   // show the first line
   clear();
+  referenceMatrix(
+    [0, 0],
+    [textFileMatrix.dim[0], 0],
+    textFileMatrix,
+    textLineTemp
+  );
 
-  const listValues = iterMatrix(textFileMatrix, currentLine);
-  if (listValues.length > 1) {
-    textLineTemp.copyarraytomatrix(listValues);
+  if (options.outputMode === "byLine") {
+    currentLine = 1;
   }
+
+  lineCursor = textFileMatrix.dim[0];
+
   jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
   jit_rota.matrixcalc(tempMat, historyMat);
   // clear the last row
-  outlet(0, "jit_matrix", historyMat.name);
+  jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
+
+  outlet(0, "jit_matrix", displayMat.name);
+}
+
+function cat() {
+  outlet(0, "jit_matrix", textFileMatrix.name);
 }
 
 function bang() {
-  historyMat.frommatrix(displayMat);
+  // historyMat.frommatrix(displayMat);
 
-  if (isPlaying) {
-    // output by each line
-    if (options.outputMode === "byLine") {
-      const listValues = iterMatrix(textFileMatrix, currentLine);
+  if (options.outputMode === "byLine") {
+    referenceMatrix(
+      [0, currentLine],
+      [textFileMatrix.dim[0] - 1, currentLine],
+      textFileMatrix,
+      textLineTemp
+    );
+
+    if (currentLine < textFileMatrix.dim[1] - 1) {
+      currentLine += 1;
+    } else {
+      currentLine = 0;
+      outlet(1, "loopnotify");
+    }
+
+    jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
+    jit_rota.matrixcalc(tempMat, historyMat);
+    jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
+    outlet(0, "jit_matrix", displayMat.name);
+  }
+  // output by each character
+  if (options.outputMode === "byCharacter") {
+    const currentCell = textFileMatrix.getcell([lineCursor, currentLine]);
+
+    if (lineCursor < textLineTemp.dim[0] && currentCell != 0) {
+      historyMat.setcell2d(lineCursor, historyMat.dim[1] - 1, currentCell);
+      lineCursor += 1;
+      jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
+      outlet(0, "jit_matrix", displayMat.name);
+    } else {
+      referenceMatrix(
+        [0, currentLine],
+        [textFileMatrix.dim[0] - 1, currentLine],
+        textFileMatrix,
+        textLineTemp
+      );
+
       if (currentLine < textFileMatrix.dim[1]) {
         currentLine += 1;
+        lineCursor = 0;
       } else {
         currentLine = 0;
-        if (!options.isLoop) {
-          isPlaying = false;
-        }
+        lineCursor = 0;
         outlet(1, "loopnotify");
-      }
-      if (listValues.length > 1) {
-        textLineTemp.copyarraytomatrix(listValues);
       }
 
       jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
       jit_rota.matrixcalc(tempMat, historyMat);
-
+      // clear the last row
+      for (let i = 0; i < historyMat.dim[0]; i++) {
+        historyMat.setcell2d(i, historyMat.dim[1] - 1, 0);
+      }
       jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
+
       outlet(0, "jit_matrix", displayMat.name);
-    }
-
-    // output by each character
-    if (options.outputMode === "byCharacter") {
-      const listValues = iterMatrix(textFileMatrix, currentLine);
-      const currentCell = listValues[lineCursor];
-
-      if (listValues.length > 1) {
-        textLineTemp.copyarraytomatrix(listValues);
-      }
-
-      if (lineCursor < listValues.length && currentCell !== 0) {
-        historyMat.setcell2d(lineCursor, historyMat.dim[1] - 1, currentCell);
-        lineCursor += 1;
-
-        jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
-        outlet(0, "jit_matrix", displayMat.name);
-      } else {
-        jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
-        jit_rota.matrixcalc(tempMat, historyMat);
-        // clear the last row
-        for (let i = 0; i < historyMat.dim[0]; i++) {
-          historyMat.setcell2d(i, historyMat.dim[1] - 1, 0);
-        }
-
-        jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
-
-        outlet(0, "jit_matrix", displayMat.name);
-
-        if (currentLine < textFileMatrix.dim[1]) {
-          currentLine += 1;
-          lineCursor = 0;
-        } else {
-          currentLine = 0;
-          if (!options.isLoop) {
-            isPlaying = false;
-          }
-          outlet(1, "loopnotify");
-        }
-      }
     }
   }
 }
 
 function play() {
-  isPlaying = true;
   bang();
-}
-
-function pause() {
-  isPlaying = false;
 }
 
 function clear() {
@@ -302,6 +292,14 @@ function clear() {
   tempMat.clear();
   displayMat.clear();
 }
+
+function referenceMatrix(srcdimstart, srcdimend, srcMat, destMat) {
+  destMat.usesrcdim = true;
+  destMat.srcdimstart = srcdimstart;
+  destMat.srcdimend = srcdimend;
+  destMat.frommatrix(srcMat);
+}
+referenceMatrix.local = true;
 
 // This function encodes a string into UTF-8 octets, similar to the [jit.str.fromsymbol]
 function encodeText(string) {
@@ -332,3 +330,4 @@ function encodeText(string) {
     return octets;
   }, []);
 }
+encodeText.local = true;
