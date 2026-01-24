@@ -2,11 +2,12 @@
 
 inlets = 1;
 outlets = 2;
+outlettypes = ["jit_matrix", "dictionary"];
 
 const options = {
-  isLoop: true,
+  isLoop: false,
   outputMode: "byLine",
-  dim: [256, 15],
+  dim: [255, 5],
   consolePrefix: ">>> ",
   consoleCursor: "_",
   consoleCursorAlt: " ",
@@ -95,7 +96,7 @@ const historyMat = new JitterMatrix(
   1,
   "char",
   options.dim[0],
-  options.dim[1] - 1
+  options.dim[1] - 1,
 );
 const consoleMat = new JitterMatrix(1, "char", options.dim[0], 1);
 const textLineTemp = new JitterMatrix(1, "char", options.dim[0], 1);
@@ -146,7 +147,7 @@ const task = new Task(function () {
   }
 
   const chars = encodeText(
-    options.consolePrefix + consoleData.text + consoleData.cursor
+    options.consolePrefix + consoleData.text + consoleData.cursor,
   );
   consoleMat.dim = [chars.length, 1];
   consoleMat.copyarraytomatrix(new Uint8Array(chars));
@@ -199,7 +200,7 @@ function jit_matrix(name) {
     [0, 0],
     [textFileMatrix.dim[0], 0],
     textFileMatrix,
-    textLineTemp
+    textLineTemp,
   );
 
   if (options.outputMode === "byLine") {
@@ -228,20 +229,22 @@ function bang() {
       [0, currentLine],
       [textFileMatrix.dim[0] - 1, currentLine],
       textFileMatrix,
-      textLineTemp
+      textLineTemp,
     );
-
-    if (currentLine < textFileMatrix.dim[1] - 1) {
-      currentLine += 1;
-    } else {
-      currentLine = 0;
-      outlet(1, "loopnotify");
-    }
 
     jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
     jit_rota.matrixcalc(tempMat, historyMat);
     jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
-    outlet(0, "jit_matrix", displayMat.name);
+
+    if (currentLine < textFileMatrix.dim[1]) {
+      currentLine += 1;
+      outlet(0, "jit_matrix", displayMat.name);
+    } else if (options.isLoop) {
+      currentLine = 0;
+
+      bang();
+      outlet(1, "bang");
+    }
   }
   // output by each character
   if (options.outputMode === "byCharacter") {
@@ -257,17 +260,8 @@ function bang() {
         [0, currentLine],
         [textFileMatrix.dim[0] - 1, currentLine],
         textFileMatrix,
-        textLineTemp
+        textLineTemp,
       );
-
-      if (currentLine < textFileMatrix.dim[1]) {
-        currentLine += 1;
-        lineCursor = 0;
-      } else {
-        currentLine = 0;
-        lineCursor = 0;
-        outlet(1, "loopnotify");
-      }
 
       jit_concat.matrixcalc([historyMat, textLineTemp], tempMat);
       jit_rota.matrixcalc(tempMat, historyMat);
@@ -277,7 +271,16 @@ function bang() {
       }
       jit_concat.matrixcalc([historyMat, consoleMat], displayMat);
 
-      outlet(0, "jit_matrix", displayMat.name);
+      if (currentLine < textFileMatrix.dim[1]) {
+        currentLine += 1;
+        lineCursor = 0;
+        outlet(0, "jit_matrix", displayMat.name);
+      } else if (options.isLoop) {
+        currentLine = 0;
+        lineCursor = 0;
+        bang();
+        outlet(0, "jit_matrix", displayMat.name);
+      }
     }
   }
 }
